@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack Store - اشتراكات الأدوات الذكية</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader-container">
+            <div class="loader-logo">
+                <img src="images/logo.png" alt="Stack Store Logo" class="loader-logo-img">
+            </div>
+            <div class="loader-text">Stack Store</div>
+            <div class="loader-bar">
+                <div class="loader-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <img src="images/logo.png" alt="Stack Store Logo" class="logo-img">
+                <span class="logo-text">Stack Store</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#home" class="nav-link active">الرئيسية</a></li>
+                <li><a href="#products" class="nav-link">الاشتراكات</a></li>
+                <li><a href="#features" class="nav-link">المميزات</a></li>
+                <li><a href="#how" class="nav-link">كيفية الشراء</a></li>
+                <li><a href="#contact" class="nav-link">تواصل معنا</a></li>
+            </ul>
+            <div class="nav-actions">
+                <!-- User Account -->
+                <div class="user-account" id="userAccount">
+                    <div class="user-avatar" id="userAvatar" onclick="toggleAccountMenu(event)">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="account-dropdown" id="accountDropdown">
+                        <div class="dropdown-header">
+                            <span id="dropdownUsername">زائر</span>
+                            <span id="dropdownEmail" style="font-size:0.75rem;color:var(--gray);display:block;margin-top:3px;"></span>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" onclick="openAccountPage(); return false;">
+                            <i class="fas fa-cog"></i> Account
+                        </a>
+                        <a href="#" onclick="openWalletPage(); return false;">
+                            <i class="fas fa-coins"></i> Wallet
+                        </a>
+                        <a href="#" onclick="openOrdersPage(); return false;">
+                           <i class="fas fa-box"></i> طلباتك
+                           <span id="ordersBadge" class="orders-badge" style="display:none;">0</span>
+                        </a>
+                        <!-- Admin Panel Link (hidden by default) -->
+                        <a href="#" id="adminPanelLink" onclick="openAdminPanel(); return false;" style="display:none;">
+                            <i class="fas fa-shield-alt"></i> Credits Panel
+                        </a>
+                        <a href="#" id="ordersPanelLink" onclick="openOrdersPanel(); return false;" style="display:none;">
+                           <i class="fas fa-clipboard-list"></i> Orders Panel
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" onclick="logoutUser(); return false;" class="logout-link">
+                            <i class="fas fa-sign-out-alt"></i> تسجيل خروج
+                        </a>
+                    </div>
+                </div>
+
+                <button class="cart-btn" id="cartBtn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count" id="cartCount">0</span>
+                </button>
+
+                <!-- Currency Selector -->
+                <div class="currency-selector" id="currencySelector">
+                    <button class="currency-btn" id="currencyBtn" onclick="toggleCurrencyDropdown(event)">
+                        <span class="currency-flag" id="currencyFlag">🇪🇬</span>
+                        <span class="currency-code" id="currencyCode">EGP</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="currency-dropdown" id="currencyDropdown">
+                        <div class="currency-option active" data-currency="EGP">
+                            <span class="flag">🇪🇬</span>
+                            <span class="name">جنيه مصري</span>
+                            <span class="code">EGP</span>
+                        </div>
+                        <div class="currency-option" data-currency="SAR">
+                            <span class="flag">🇸🇦</span>
+                            <span class="name">ريال سعودي</span>
+                            <span class="code">SAR</span>
+                        </div>
+                        <div class="currency-option" data-currency="AED">
+                            <span class="flag">🇦🇪</span>
+                            <span class="name">درهم إماراتي</span>
+                            <span class="code">AED</span>
+                        </div>
+                        <div class="currency-option" data-currency="KWD">
+                            <span class="flag">🇰🇼</span>
+                            <span class="name">دينار كويتي</span>
+                            <span class="code">KWD</span>
+                        </div>
+                        <div class="currency-option" data-currency="USD">
+                            <span class="flag">🇺🇸</span>
+                            <span class="name">دولار أمريكي</span>
+                            <span class="code">USD</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-bg">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+            <div class="gradient-orb orb-3"></div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-bolt"></i>
+                <span>تفعيل فوري خلال دقائق</span>
+            </div>
+            <h1 class="hero-title">
+                <span class="title-line">اشتراكات ذكية</span>
+                <span class="title-line highlight">لأدواتك المفضلة</span>
+            </h1>
+            <p class="hero-desc">
+                احصل على اشتراكات ChatGPT، Gemini، Canva وغيرها بأفضل الأسعار. تفعيل فوري وضمان كامل.
+            </p>
+            <div class="hero-buttons">
+                <a href="#products" class="btn btn-primary">
+                    <span>تصفح الاشتراكات</span>
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <a href="#how" class="btn btn-outline">
+                    <i class="fas fa-play-circle"></i>
+                    <span>كيف أشتري؟</span>
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-number" data-target="12">0</span>
+                    <span class="stat-label">عميل سعيد</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" data-target="10">0</span>
+                    <span class="stat-label">اشتراك مباع</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" data-target="99">0</span>
+                    <span class="stat-label">% رضا العملاء</span>
+                </div>
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <div class="mouse">
+                <div class="wheel"></div>
+            </div>
+            <span>اسحب للأسفل</span>
+        </div>
+    </section>
+
+    <!-- Trusted By -->
+    <section class="trusted">
+        <div class="trusted-container">
+            <p class="trusted-label">موثوق من آلاف العملاء</p>
+            <div class="trusted-logos">
+                <div class="t-logo"><i class="fab fa-google"></i></div>
+                <div class="t-logo"><i class="fab fa-microsoft"></i></div>
+                <div class="t-logo"><i class="fab fa-apple"></i></div>
+                <div class="t-logo"><i class="fab fa-amazon"></i></div>
+                <div class="t-logo"><i class="fab fa-meta"></i></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products" id="products">
+        <div class="section-header">
+            <span class="section-tag">الاشتراكات المتاحة</span>
+            <h2 class="section-title">اختر اشتراكك المثالي</h2>
+            <p class="section-desc">أفضل الأسعار على اشتراكات الأدوات الذكية مع ضمان التفعيل الفوري</p>
+        </div>
+        <div class="products-filter">
+            <button class="filter-btn active" data-filter="all">الكل</button>
+            <button class="filter-btn" data-filter="ai">ذكاء اصطناعي</button>
+            <button class="filter-btn" data-filter="design">تصميم</button>
+            <button class="filter-btn" data-filter="productivity">إنتاجية</button>
+        </div>
+        <div class="products-grid" id="productsGrid"></div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <span class="section-tag">لماذا نحن؟</span>
+            <h2 class="section-title">مميزات Stack Store</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                <h3>تفعيل فوري</h3>
+                <p>احصل على اشتراكك خلال دقائق من إتمام الدفع</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                <h3>ضمان كامل</h3>
+                <p>ضمان استرجاع المبلغ خلال 24 ساعة إذا لم يعمل الاشتراك</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-headset"></i></div>
+                <h3>دعم طوال الوقت</h3>
+                <p>فريق دعم جاهز لمساعدتك في أي وقت</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-tag"></i></div>
+                <h3>أفضل الأسعار</h3>
+                <p>أسعار تنافسية أقل من السوق بكثير</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-credit-card"></i></div>
+                <h3>دفع آمن</h3>
+                <p>طرق دفع متعددة وآمنة 100%</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-gift"></i></div>
+                <h3>عروض حصرية</h3>
+                <p>خصومات وعروض خاصة للعملاء الدائمين</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How to Buy Section -->
+    <section class="how-to-buy" id="how">
+        <div class="section-header">
+            <span class="section-tag">خطوات الشراء</span>
+            <h2 class="section-title">كيف تشتري من Stack Store؟</h2>
+        </div>
+        <div class="steps-container">
+            <div class="step-card">
+                <div class="step-number">01</div>
+                <div class="step-icon"><i class="fas fa-mouse-pointer"></i></div>
+                <h3>اختر الاشتراك</h3>
+                <p>تصفح الاشتراكات واختر ما يناسبك</p>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step-card">
+                <div class="step-number">02</div>
+                <div class="step-icon"><i class="fas fa-wallet"></i></div>
+                <h3>ادفع بأمان</h3>
+                <p>اختر طريقة الدفع المناسبة لك</p>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step-card">
+                <div class="step-number">03</div>
+                <div class="step-icon"><i class="fas fa-envelope"></i></div>
+                <h3>استلم فوراً</h3>
+                <p>احصل على بيانات الاشتراك على واتساب أو إيميل</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="section-header">
+            <span class="section-tag">آراء العملاء</span>
+            <h2 class="section-title">ماذا يقول عملاؤنا؟</h2>
+        </div>
+        <div class="testimonials-slider" id="testimonialsSlider">
+            <div class="testimonial-card">
+                <div class="stars">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                </div>
+                <p>"أفضل موقع اشتريت منه اشتراكات! التفعيل فوري والأسعار رهيبة. أنصح الجميع بشدة."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">أ</div>
+                    <div><h4>أحمد محمد</h4><span>مصمم جرافيك</span></div>
+                </div>
+            </div>
+            <div class="testimonial-card">
+                <div class="stars">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                </div>
+                <p>"خدمة ممتازة والدفع عبر فودافون كاش سهل جداً. استلمت اشتراك ChatGPT خلال 5 دقائق!"</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">م</div>
+                    <div><h4>محمد علي</h4><span>مطور ويب</span></div>
+                </div>
+            </div>
+            <div class="testimonial-card">
+                <div class="stars">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                </div>
+                <p>"Stack Store غير حياتي المهنية! الآن أستخدم Gemini Advanced بسعر رخيص جداً."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">س</div>
+                    <div><h4>سارة أحمد</h4><span>كاتبة محتوى</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq">
+        <div class="section-header">
+            <span class="section-tag">الأسئلة الشائعة</span>
+            <h2 class="section-title">عندك سؤال؟</h2>
+        </div>
+        <div class="faq-container">
+            <div class="faq-item-static reveal">
+                <div class="faq-question-static">
+                    <i class="fas fa-question-circle"></i>
+                    <span>كيف أستلم الاشتراك بعد الدفع؟</span>
+                </div>
+                <div class="faq-answer-static">
+                    <p>بعد إتمام الدفع، ستصلك بيانات الاشتراك مباشرة على واتساب أو الإيميل خلال دقائق.</p>
+                </div>
+            </div>
+            <div class="faq-item-static reveal">
+                <div class="faq-question-static">
+                    <i class="fas fa-question-circle"></i>
+                    <span>هل الاشتراكات أصلية وآمنة؟</span>
+                </div>
+                <div class="faq-answer-static">
+                    <p>نعم 100%! جميع الاشتراكات أصلية ومشتراة من المصادر الرسمية.</p>
+                </div>
+            </div>
+            <div class="faq-item-static reveal">
+                <div class="faq-question-static">
+                    <i class="fas fa-question-circle"></i>
+                    <span>ما هي طرق الدفع المتاحة؟</span>
+                </div>
+                <div class="faq-answer-static">
+                    <p>نحن نقبل فودافون كاش وإنستا باي حالياً. جميع طرق الدفع آمنة 100%.</p>
+                </div>
+            </div>
+            <div class="faq-item-static reveal">
+                <div class="faq-question-static">
+                    <i class="fas fa-question-circle"></i>
+                    <span>هل يوجد ضمان استرجاع؟</span>
+                </div>
+                <div class="faq-answer-static">
+                    <p>نعم، نقدم ضمان استرجاع كامل خلال 24 ساعة إذا لم يعمل الاشتراك.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="contact-container">
+            <div class="contact-info">
+                <span class="section-tag">تواصل معنا</span>
+                <h2>نحن هنا لمساعدتك</h2>
+                <p>فريقنا جاهز للرد على جميع استفساراتك على مدار الساعة</p>
+                <div class="contact-methods">
+                    <a href="https://wa.me/201018484572" target="_blank" class="contact-method whatsapp">
+                        <i class="fab fa-whatsapp"></i>
+                        <div><span>واتساب</span><strong>+20 101 848 4572</strong></div>
+                    </a>
+                    <a href="mailto:supportstackstore@gmail.com" class="contact-method">
+                        <i class="fas fa-envelope"></i>
+                        <div><span>البريد الإلكتروني</span><strong>supportstackstore@gmail.com</strong></div>
+                    </a>
+                    <a href="https://t.me/stackstorex" target="_blank" class="contact-method">
+                        <i class="fab fa-telegram"></i>
+                        <div><span>تليجرام</span><strong>@stackstorex</strong></div>
+                    </a>
+                </div>
+            </div>
+            <form action="https://formspree.io/f/xqevlbeo" method="POST" class="contact-form" id="contactForm">
+                <div class="form-group">
+                    <input type="text" name="name" id="name" placeholder=" " required>
+                    <label for="name">الاسم الكامل</label>
+                    <div class="input-icon"><i class="fas fa-user"></i></div>
+                    <div class="input-glow"></div>
+                </div>
+                <div class="form-group">
+                    <input type="email" name="email" id="email" placeholder=" " required>
+                    <label for="email">البريد الإلكتروني</label>
+                    <div class="input-icon"><i class="fas fa-envelope"></i></div>
+                    <div class="input-glow"></div>
+                </div>
+                <div class="form-group">
+                    <textarea name="message" id="message" rows="4" placeholder=" " required style="resize: none; overflow: hidden;"></textarea>
+                    <label for="message">رسالتك</label>
+                    <div class="input-icon textarea-icon"><i class="fas fa-comment-alt"></i></div>
+                    <div class="input-glow"></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">
+                    <span>إرسال الرسالة</span>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <a href="#" class="logo">
+                    <img src="images/logo.png" alt="Stack Store Logo" class="logo-img">
+                    <span class="logo-text">Stack Store</span>
+                </a>
+                <p>وجهتك الأولى لشراء اشتراكات الأدوات الذكية بأفضل الأسعار وأعلى مستوى من الأمان.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-tiktok"></i></a>
+                </div>
+            </div>
+            <div class="footer-links">
+                <div class="footer-col">
+                    <h4>روابط سريعة</h4>
+                    <ul>
+                        <li><a href="#home">الرئيسية</a></li>
+                        <li><a href="#products">الاشتراكات</a></li>
+                        <li><a href="#features">المميزات</a></li>
+                        <li><a href="#contact">تواصل معنا</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>الاشتراكات</h4>
+                    <ul>
+                        <li><a href="#">ChatGPT Plus</a></li>
+                        <li><a href="#">Gemini Advanced</a></li>
+                        <li><a href="#">Canva Pro</a></li>
+                        <li><a href="#">Claude Pro</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>الدعم</h4>
+                    <ul>
+                        <li><a href="#">مركز المساعدة</a></li>
+                        <li><a href="#">سياسة الاسترجاع</a></li>
+                        <li><a href="#">شروط الاستخدام</a></li>
+                        <li><a href="#">سياسة الخصوصية</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 Stack Store. جميع الحقوق محفوظة.</p>
+        </div>
+    </footer>
+
+    <!-- Product Modal -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal">
+            <button class="modal-close" id="modalClose"><i class="fas fa-times"></i></button>
+            <div class="modal-content" id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-cart"></i> سلة المشتريات</h3>
+            <button class="cart-close" id="cartClose"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>الإجمالي:</span>
+                <span id="cartTotal">0 ج.م</span>
+            </div>
+            <button class="btn btn-primary btn-full" id="checkoutBtn">
+                <span>إتمام الشراء</span>
+                <i class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal payment-modal">
+            <button class="modal-close" id="paymentClose"><i class="fas fa-times"></i></button>
+            <div class="payment-content">
+                <div class="payment-header">
+                    <div class="payment-icon"><i class="fas fa-shopping-bag"></i></div>
+                    <h2>ملخص الطلب</h2>
+                    <p>راجع طلبك قبل الدفع</p>
+                </div>
+
+                <!-- Order ID Display -->
+                <div class="order-id-box" id="orderIdBox" style="display:none;">
+                    <span>رقم الطلب:</span>
+                    <strong id="displayOrderId">---</strong>
+                </div>
+
+                <div class="order-summary" id="orderSummary"></div>
+
+                <div class="order-total-box">
+                    <div class="order-total-row">
+                        <span>المجموع الفرعي:</span>
+                        <span id="subtotalAmount">0 ج.م</span>
+                    </div>
+                    <div class="order-total-row">
+                        <span>الضريبة:</span>
+                        <span>0 ج.م</span>
+                    </div>
+                    <div class="order-total-row grand-total">
+                        <span>الإجمالي:</span>
+                        <span id="grandTotalAmount">0 ج.م</span>
+                    </div>
+                </div>
+
+                <!-- Customer Info -->
+                <div class="customer-info-box">
+                    <div class="form-group-customer">
+                        <div class="input-wrapper">
+                            <input type="text" id="customerName" placeholder=" " required>
+                            <label><i class="fas fa-user"></i> اسمك الكامل</label>
+                            <div class="input-glow"></div>
+                        </div>
+                    </div>
+                    <div class="form-group-customer">
+                        <div class="input-wrapper">
+                            <input type="email" id="customerEmail" placeholder=" " required>
+                            <label><i class="fas fa-envelope"></i> إيميلك لاستلام الحساب</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <small id="emailError" class="error-msg">يرجى إدخال إيميل صحيح</small>
+                    </div>
+                    <div class="form-group-customer">
+                        <div class="input-wrapper">
+                            <input type="tel" id="customerPhone" placeholder=" " required>
+                            <label><i class="fas fa-phone"></i> رقم واتساب</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <small id="phoneError" class="error-msg">يرجى إدخال رقم مصري صحيح (11 رقم)</small>
+                    </div>
+                </div>
+
+                <!-- Credits Payment Option -->
+                <div class="credits-payment-option" id="creditsPaymentOption" style="display:none;">
+                    <!-- Credits Payment Button -->
+                    <button class="btn btn-credits btn-full" id="creditsPayBtn" onclick="payWithCredits()">
+                        <!-- Content will be filled by JavaScript -->
+                    </button>
+                </div>
+
+                <!-- Opay Disabled -->
+                <button class="btn btn-opay btn-full disabled" id="opayPayBtn" disabled title="سيتم تفعيل الدفع عبر Opay قريباً">
+                    <i class="fas fa-lock"></i>
+                    <span>الدفع عبر Opay - غير متاح حالياً</span>
+                    <i class="fas fa-clock"></i>
+                </button>
+
+                <div class="payment-security opay-disabled-note">
+                    <i class="fas fa-info-circle"></i>
+                    <span>الدفع الآمن عبر Opay قيد التفعيل - يمكنك استخدام الدفع اليدوي الآن</span>
+                </div>
+
+                <div class="payment-divider"><span>أو</span></div>
+
+                <button class="btn btn-outline btn-full" onclick="openManualPaymentSelector()" style="margin-top: 15px;">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>الدفع اليدوي</span>
+                </button>               
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Details Modal -->
+    <div class="modal-overlay" id="paymentDetailsModal">
+        <div class="modal payment-details-modal">
+            <button class="modal-close" id="paymentDetailsClose"><i class="fas fa-times"></i></button>
+            <div class="payment-details-content" id="paymentDetailsContent"></div>
+        </div>
+    </div>
+
+    <!-- Manual Payment Modal -->
+    <div class="modal-overlay" id="manualPaymentModal">
+        <div class="modal manual-payment-modal">
+            <button class="modal-close" id="manualPaymentClose" style="left:auto;right:20px;"><i class="fas fa-arrow-right"></i></button>
+            <div class="payment-content">
+                <div class="payment-header">
+                    <div class="payment-icon"><i class="fas fa-credit-card"></i></div>
+                    <h2>إتمام الشراء</h2>
+                    <p>اختر طريقة الدفع المناسبة لك</p>
+                </div>
+                <div class="payment-methods-list" id="paymentMethodsList"></div>
+                <div style="background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.2);border-radius:var(--radius-md);padding:15px;margin-top:20px;">
+                    <p style="font-size:0.9rem;color:var(--accent);text-align:center;">
+                        <i class="fas fa-info-circle"></i>
+                        بعد الدفع، أرسل إيصال التحويل على واتساب للتفعيل الفوري
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal (Login/Register) -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal auth-modal">
+            <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
+            <div class="auth-content">
+                <div class="auth-header">
+                    <div class="auth-icon"><i class="fas fa-user-circle"></i></div>
+                    <h2>مرحباً بك</h2>
+                    <p>سجل دخولك للمتابعة</p>
+                </div>
+
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchAuthTab('login')">تسجيل دخول</button>
+                    <button class="auth-tab" onclick="switchAuthTab('register')">إنشاء حساب</button>
+                </div>
+
+                <button class="btn btn-google btn-full" onclick="loginWithGoogle()">
+                    <i class="fab fa-google"></i>
+                    <span>تسجيل الدخول بـ Google</span>
+                </button>
+
+                <div class="auth-divider"><span>أو</span></div>
+
+                <!-- Login Form -->
+                <div id="loginForm" class="auth-form active">
+                    <div class="form-group-customer">
+                        <div class="input-wrapper">
+                            <input type="email" id="loginEmail" placeholder=" " required>
+                            <label><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                            <div class="input-glow"></div>
+                        </div>
+                    </div>
+                    <div class="form-group-customer password-group">
+                        <div class="input-wrapper">
+                            <input type="password" id="loginPassword" placeholder=" " required>
+                            <label><i class="fas fa-lock"></i> كلمة المرور</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <button type="button" class="toggle-password" onclick="togglePassword('loginPassword')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="loginWithEmail()">
+                        <span>تسجيل دخول</span>
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+
+                <!-- Register Form -->
+                <div id="registerForm" class="auth-form">
+                    <!-- Username Field with Live Validation -->
+                    <div class="form-group-customer username-group">
+                        <div class="input-wrapper">
+                            <input type="text" id="registerUsername" placeholder=" " required 
+                                   oninput="validateUsernameLive(this.value)" 
+                                   onblur="checkUsernameAvailability(this.value)">
+                            <label><i class="fas fa-at"></i> اسم المستخدم (Username)</label>
+                            <div class="input-glow"></div>
+                            <div class="username-status" id="usernameStatus">
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                            </div>
+                        </div>
+                        <small id="usernameError" class="error-msg">اسم المستخدم يجب أن يكون بين 4-15 حرف، أحرف صغيرة فقط</small>
+                        <small id="usernameHint" class="hint-msg">أحرف صغيرة فقط، 4-15 حرف</small>
+                    </div>
+
+                    <div class="form-group-customer">
+                        <div class="input-wrapper">
+                            <input type="email" id="registerEmail" placeholder=" " required>
+                            <label><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                            <div class="input-glow"></div>
+                        </div>
+                    </div>
+                    <div class="form-group-customer password-group">
+                        <div class="input-wrapper">
+                            <input type="password" id="registerPassword" placeholder=" " required>
+                            <label><i class="fas fa-lock"></i> كلمة المرور</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <button type="button" class="toggle-password" onclick="togglePassword('registerPassword')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="form-group-customer password-group">
+                        <div class="input-wrapper">
+                            <input type="password" id="registerPasswordConfirm" placeholder=" " required>
+                            <label><i class="fas fa-lock"></i> تأكيد كلمة المرور</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <button type="button" class="toggle-password" onclick="togglePassword('registerPasswordConfirm')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="registerWithEmail()">
+                        <span>إنشاء حساب</span>
+                        <i class="fas fa-user-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Username Setup Modal (for Google users) -->
+    <div class="modal-overlay" id="usernameSetupModal">
+        <div class="modal username-setup-modal">
+            <div class="username-setup-content">
+                <div class="username-setup-header">
+                    <div class="username-setup-icon">
+                        <i class="fas fa-user-tag"></i>
+                    </div>
+                    <h2>اختر اسم المستخدم</h2>
+                    <p>اختر يوزرنييم فريد يميزك في Stack Store</p>
+                </div>
+
+                <div class="username-setup-form">
+                    <div class="form-group-customer username-group">
+                        <div class="input-wrapper">
+                            <input type="text" id="setupUsername" placeholder=" " 
+                                   oninput="validateSetupUsername(this.value)"
+                                   onblur="checkSetupUsernameAvailability(this.value)">
+                            <label><i class="fas fa-at"></i> اسم المستخدم</label>
+                            <div class="input-glow"></div>
+                            <div class="username-status" id="setupUsernameStatus">
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                            </div>
+                        </div>
+                        <small id="setupUsernameError" class="error-msg">اسم المستخدم يجب أن يكون بين 4-15 حرف، أحرف صغيرة فقط</small>
+                        <small id="setupUsernameHint" class="hint-msg">أحرف صغيرة فقط، 4-15 حرف</small>
+                    </div>
+
+                    <div class="username-rules">
+                        <div class="rule" id="ruleLength">
+                            <i class="fas fa-times-circle"></i>
+                            <span>4-15 حرف</span>
+                        </div>
+                        <div class="rule" id="ruleLowercase">
+                            <i class="fas fa-times-circle"></i>
+                            <span>أحرف صغيرة فقط (a-z)</span>
+                        </div>
+                        <div class="rule" id="ruleUnique">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            <span>متاح وغير مستخدم</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" id="setupUsernameBtn" onclick="saveUsernameSetup()" disabled>
+                        <span>حفظ اسم المستخدم</span>
+                        <i class="fas fa-check"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Settings Page -->
+    <div class="modal-overlay" id="accountPageModal">
+        <div class="modal account-page-modal">
+            <button class="modal-close" onclick="closeAccountPage()"><i class="fas fa-times"></i></button>
+            <div class="account-page-content">
+                <h2><i class="fas fa-cog"></i> إعدادات الحساب</h2>
+
+                <div class="profile-picture-section">
+                    <div class="profile-picture" id="profilePicture">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <button class="btn btn-outline" onclick="document.getElementById('profilePicInput').click()">
+                        <i class="fas fa-camera"></i> تغيير الصورة
+                    </button>
+                    <input type="file" id="profilePicInput" accept="image/*" style="display:none" onchange="uploadProfilePicture(this)">
+                </div>
+                
+                <!-- Username (Editable) -->
+                <div class="form-group-customer username-group">
+                    <div class="input-wrapper">
+                        <input type="text" id="accountUsername" placeholder=" " 
+                               oninput="validateAccountUsername(this.value)">
+                        <label><i class="fas fa-at"></i> اسم المستخدم</label>
+                        <div class="input-glow"></div>
+                        <div class="username-status" id="accountUsernameStatus">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                        </div>
+                    </div>
+                    <small id="accountUsernameError" class="error-msg">اسم المستخدم يجب أن يكون بين 4-15 حرف، أحرف صغيرة فقط</small>
+                    <small id="accountUsernameHint" class="hint-msg">أحرف صغيرة فقط، 4-15 حرف</small>
+                </div>
+
+                <div class="form-group-customer">
+                    <div class="input-wrapper">
+                        <input type="text" id="accountDisplayName" placeholder=" " required>
+                        <label>الاسم الكامل</label>
+                        <div class="input-glow"></div>
+                    </div>
+                </div>
+
+                <div class="form-group-customer">
+                    <div class="input-wrapper">
+                        <input type="date" id="accountBirthDate" placeholder=" ">
+                        <label>تاريخ الميلاد</label>
+                        <div class="input-glow"></div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-full" onclick="saveAccountSettings()">
+                    <i class="fas fa-save"></i> حفظ التغييرات
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Orders Page (للعميل) -->
+<div class="modal-overlay" id="ordersPageModal">
+    <div class="modal orders-page-modal">
+        <button class="modal-close" onclick="closeOrdersPage()"><i class="fas fa-times"></i></button>
+        <div class="orders-page-content">
+            <h2><i class="fas fa-box"></i> طلباتك</h2>
+            <div class="orders-list" id="customerOrdersList">
+                <div class="orders-empty">
+                    <i class="fas fa-shopping-bag"></i>
+                    <p>لا توجد طلبات حتى الآن</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Wallet Page -->
+    <div class="modal-overlay" id="walletPageModal">
+        <div class="modal wallet-page-modal">
+            <button class="modal-close" onclick="closeWalletPage()"><i class="fas fa-times"></i></button>
+            <div class="wallet-page-content">
+                <h2><i class="fas fa-wallet"></i> محفظتي</h2>
+
+                <div class="wallet-balance-card">
+                    <span class="balance-label">الرصيد الحالي</span>
+                    <span class="balance-amount" id="walletBalance">0.00</span>
+                    <span class="balance-currency">Credits</span>
+                </div>
+
+                <div class="add-credits-section">
+                    <h3>إضافة رصيد</h3>
+                    <div class="credits-input">
+                        <div class="input-wrapper">
+                            <input type="number" id="creditsAmount" placeholder="أدخل عدد Credits" min="5" step="5">
+                            <div class="input-glow"></div>
+                        </div>
+                        <span class="credits-conversion">5 Credits = 1 EGP</span>
+                    </div>
+
+                    <div class="preset-amounts">
+                        <button onclick="setCreditsAmount(50)">50</button>
+                        <button onclick="setCreditsAmount(100)">100</button>
+                        <button onclick="setCreditsAmount(250)">250</button>
+                        <button onclick="setCreditsAmount(500)">500</button>
+                    </div>
+
+                    <div class="credits-total">
+                        <span>السعر الإجمالي:</span>
+                        <strong id="creditsTotalPrice">0 EGP</strong>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" onclick="addCredits()">
+                        <i class="fas fa-plus-circle"></i> إضافة رصيد
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Orders Panel -->
+<div class="modal-overlay" id="ordersPanelModal">
+    <div class="modal orders-panel-modal">
+        <button class="modal-close" onclick="closeOrdersPanel()"><i class="fas fa-times"></i></button>
+        <div class="orders-panel-content">
+            <div class="admin-header">
+                <div class="admin-icon"><i class="fas fa-clipboard-list"></i></div>
+                <h2>Orders Panel</h2>
+                <p>إدارة طلبات العملاء وتسليم الحسابات</p>
+            </div>
+
+<!-- Admin Create Order Section -->
+<div class="admin-create-order" id="adminCreateOrderSection">
+    <button class="btn btn-primary btn-full create-order-toggle" onclick="toggleCreateOrderForm()">
+        <i class="fas fa-plus-circle"></i>
+        <span>إنشاء طلب جديد للعميل</span>
+    </button>
+    
+    <div id="createOrderForm" style="display: none;">
+        
+        <!-- إيميل العميل -->
+        <div class="form-group-dark" style="margin-bottom: 15px;">
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--gray-light); font-size: 0.85rem;">
+                <i class="fas fa-envelope" style="color: var(--primary);"></i> 
+                إيميل العميل
+            </label>
+            <input type="email" id="newOrderCustomerEmail" placeholder="example@email.com" 
+                   style="width: 100%; background: transparent; border: none; color: var(--white); font-family: inherit; font-size: 0.95rem; outline: none; padding: 0;">
+        </div>
+
+        <!-- قائمة المنتجات -->
+        <div id="newOrderProductsList">
+            <!-- المنتج الأول -->
+            <div class="product-entry" data-index="0" style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md);">
+                
+                <h4 style="font-size: 0.9rem; color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-box"></i> 
+                    منتج #1
+                </h4>
+
+                <!-- اسم المنتج -->
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-size: 0.85rem; color: var(--gray-light); margin-bottom: 8px;">
+                        <i class="fas fa-tag" style="color: var(--primary); margin-left: 5px;"></i>
+                        اسم المنتج
+                    </label>
+                    <input type="text" class="new-order-product-name" data-index="0" placeholder="مثال: ChatGPT Plus" 
+                           style="width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: var(--white); font-family: inherit; font-size: 0.9rem; outline: none; transition: all 0.3s ease;">
+                </div>
+
+                <!-- بيانات الحساب -->
+                <div style="background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); padding: 15px;">
+                    <h5 style="font-size: 0.8rem; color: var(--gray-light); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-key" style="color: var(--secondary);"></i>
+                        بيانات الحساب
+                    </h5>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="text" class="new-order-account-email" data-index="0" placeholder="Email" 
+                               style="padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: var(--white); font-family: inherit; font-size: 0.85rem; outline: none;">
+                        <input type="text" class="new-order-account-pass" data-index="0" placeholder="Password" 
+                               style="padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: var(--white); font-family: inherit; font-size: 0.85rem; outline: none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- زر الإضافة -->
+        <button class="add-more-btn" onclick="addProductField()" style="margin: 15px 0; width: 100%; padding: 12px; background: rgba(0,132,255,0.1); border: 2px dashed rgba(0,132,255,0.3); border-radius: var(--radius-sm); color: var(--primary); font-family: inherit; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease;">
+            <i class="fas fa-plus-circle"></i>
+            <span>إضافة منتج / حساب آخر</span>
+        </button>
+        
+        <!-- زر الإرسال -->
+        <button class="btn btn-primary btn-full send-order-btn" onclick="createOrderForCustomer()" style="margin-top: 10px;">
+            <i class="fas fa-paper-plane"></i>
+            <span>إنشاء وإرسال للعميل</span>
+        </button>
+    </div>
+</div>
+
+            <div class="orders-panel-list" id="adminOrdersList">
+                <div class="orders-empty">
+                    <i class="fas fa-inbox"></i>
+                    <p>لا توجد طلبات جديدة</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Admin Panel Modal -->
+    <div class="modal-overlay" id="adminPanelModal">
+        <div class="modal admin-panel-modal">
+            <button class="modal-close" onclick="closeAdminPanel()"><i class="fas fa-times"></i></button>
+            <div class="admin-panel-content">
+                <div class="admin-header">
+                    <div class="admin-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h2>Credits Panel</h2>
+                    <p>إدارة رصيد المستخدمين</p>
+                </div>
+
+                <div class="admin-stats">
+                    <div class="admin-stat">
+                        <i class="fas fa-coins"></i>
+                        <span class="admin-stat-value" id="adminTotalCredits">100,000,000</span>
+                        <span class="admin-stat-label">رصيدك الحالي</span>
+                    </div>
+                </div>
+
+                <div class="admin-form">
+                    <h3>إضافة رصيد لمستخدم</h3>
+                    <div class="form-group-customer">
+                        <div class="input-wrapper">
+                            <input type="text" id="adminTargetUsername" placeholder=" " required>
+                            <label><i class="fas fa-at"></i> اسم المستخدم</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <small id="adminUserStatus" class="hint-msg">أدخل اسم المستخدم لتحديد المستخدم</small>
+                    </div>
+
+                    <div class="form-group-customer">
+                        <div class="input-wrapper">
+                            <input type="number" id="adminCreditsAmount" placeholder=" " min="1" required>
+                            <label><i class="fas fa-coins"></i> عدد Credits</label>
+                            <div class="input-glow"></div>
+                        </div>
+                    </div>
+
+                    <div class="admin-amount-preview" id="adminAmountPreview" style="display:none;">
+                        <span>المبلغ المدفوع: <strong id="adminMoneyAmount">0 EGP</strong></span>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" onclick="addCreditsToUser()">
+                        <i class="fas fa-plus-circle"></i> إضافة الرصيد
+                    </button>
+                </div>
+
+                <div class="admin-recent-transactions">
+                    <h3>آخر العمليات</h3>
+                    <div class="transactions-list" id="adminTransactionsList">
+                        <div class="transaction-empty">
+                            <i class="fas fa-history"></i>
+                            <p>لا توجد عمليات حديثة</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credits Payment Modal -->
+    <div class="modal-overlay" id="creditsPaymentModal">
+        <div class="modal credits-payment-modal"> 
+            <button class="modal-close" onclick="closeCreditsPaymentModal()"><i class="fas fa-times"></i></button>
+            
+            <div class="credits-header-gold">
+                <div class="credits-gold-bg">
+                    <i class="fas fa-coins"></i>
+                    <i class="fas fa-coins"></i>
+                    <i class="fas fa-coins"></i>
+                    <i class="fas fa-coins"></i>
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="credits-header-content">
+                    <h2>شحن رصيد Credits</h2>
+                    <p>اختر طريقة الدفع المناسبة لشحن رصيدك</p>
+                </div>
+            </div>
+
+            <div class="payment-content" style="padding-top: 20px;">
+                <div class="credits-order-summary" id="creditsOrderSummary"></div>
+
+                <div class="order-total-box credits-total-box">
+                    <div class="order-total-row grand-total">
+                        <span>الإجمالي:</span>
+                        <span id="creditsPaymentTotal">0 EGP</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-opay btn-full disabled" disabled title="سيتم تفعيل الدفع عبر Opay قريباً">
+                    <i class="fas fa-lock"></i>
+                    <span>الدفع عبر Opay - غير متاح حالياً</span>
+                    <i class="fas fa-clock"></i>
+                </button>
+
+                <div class="payment-security opay-disabled-note">
+                    <i class="fas fa-info-circle"></i>
+                    <span>الدفع الآمن عبر Opay قيد التفعيل</span>
+                </div>
+
+                <div class="payment-divider"><span>أو</span></div>
+
+                <button class="btn btn-outline btn-full credits-manual-btn" onclick="openCreditsManualSelector()" style="margin-top: 15px;">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>الدفع اليدوي</span>
+                </button>
+
+                <div class="credits-info-box">
+                    <p>
+                        <i class="fas fa-info-circle"></i>
+                        بعد الدفع، أرسل إيصال التحويل على واتساب لإضافة الرصيد فوراً
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Confirmation Modal -->
+    <div class="modal-overlay" id="emailConfirmModal">
+        <div class="modal email-confirm-modal">
+            <div class="email-confirm-content">
+                <div class="email-confirm-icon">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <h2>تم إرسال طلبك بنجاح!</h2>
+                <p class="email-confirm-order">رقم الطلب: <strong id="confirmOrderId">---</strong></p>
+                <div class="email-confirm-details">
+                    <p>تم إرسال بريد إلكتروني تأكيدي إلى:</p>
+                    <strong id="confirmEmail">---</strong>
+                    <p class="email-confirm-note">يرجى التحقق من بريدك الوارد (والمهملات أيضاً) لاستلام تفاصيل الطلب.</p>
+                </div>
+                <div class="email-confirm-summary" id="emailConfirmSummary"></div>
+                <button class="btn btn-primary btn-full" onclick="closeEmailConfirmModal()">
+                    <span>حسناً، فهمت</span>
+                    <i class="fas fa-check"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">تمت الإضافة للسلة!</span>
+    </div>
+
+    <script src="app.js"></script>
+
+    <!-- Credits Confirm Modal (appears over payment modal) -->
+<div class="modal-overlay" id="creditsConfirmModal" style="z-index: 2500;">
+    <div class="modal confirm-modal" style="max-width: 380px; padding: 0; overflow: hidden;">
+        <div class="confirm-header">
+            <div class="confirm-icon">
+                <i class="fas fa-question-circle"></i>
+            </div>
+            <h3>تأكيد الدفع</h3>
+        </div>
+        <div class="confirm-body">
+            <p class="confirm-text">هل أنت متأكد من شراء هذه المنتجات؟</p>
+            <div class="confirm-details">
+                <div class="confirm-row">
+                    <span>المبلغ:</span>
+                    <strong id="confirmTotalPrice">0 ج.م</strong>
+                </div>
+                <div class="confirm-row">
+                    <span>Credits:</span>
+                    <strong id="confirmCreditsNeeded" style="color: #FFD700;">0</strong>
+                </div>
+                <div class="confirm-row">
+                    <span>رصيدك الحالي:</span>
+                    <strong id="confirmCurrentBalance" style="color: var(--secondary);">0</strong>
+                </div>
+                <div class="confirm-row" style="border-top: 1px solid var(--glass-border); margin-top: 10px; padding-top: 10px;">
+                    <span>سيتبقى لك:</span>
+                    <strong id="confirmRemainingBalance">0</strong>
+                </div>
+            </div>
+        </div>
+        <div class="confirm-footer">
+            <button class="btn btn-outline btn-full" onclick="closeCreditsConfirmModal()" style="flex: 1;">
+                <i class="fas fa-times"></i>
+                <span>لا، إلغاء</span>
+            </button>
+            <button class="btn btn-credits btn-full" onclick="confirmCreditsPayment()" style="flex: 1; margin: 0;">
+                <i class="fas fa-check"></i>
+                <span>نعم، تأكيد</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

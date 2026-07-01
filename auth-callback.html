@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>جاري تسجيل الدخول...</title>
+    <style>
+        body {
+            background: #0A0E1A;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Tajawal', sans-serif;
+        }
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0,132,255,0.2);
+            border-top-color: #0084FF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        p { color: #9CA3AF; }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <p>جاري إكمال تسجيل الدخول...</p>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <script>
+        const SUPABASE_URL = 'https://caqtxoiihlgfsxraawwn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcXR4b2lpaGxnZnN4cmFhd3duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NDYzMTUsImV4cCI6MjA5ODMyMjMxNX0.UTp-E7vaigpQ_UwvNPoX3ijmJBpIBz0_bAvOB2SQBaI';
+
+        async function handleCallback() {
+            try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                    auth: {
+                        autoRefreshToken: true,
+                        persistSession: true,
+                        detectSessionInUrl: true
+                    }
+                });
+                
+                // PKCE flow: نستخرج الـ code من URL
+                const url = new URL(window.location.href);
+                const code = url.searchParams.get('code');
+                const error = url.searchParams.get('error');
+                const error_description = url.searchParams.get('error_description');
+
+                if (error) {
+                    console.error('OAuth error:', error, error_description);
+                    window.location.href = 'index.html?auth_error=' + encodeURIComponent(error_description);
+                    return;
+                }
+
+                if (code) {
+                    try {
+                        // 🔥 الخطوة المهمة: استبدال الـ code بـ session
+                        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+                        
+                        if (exchangeError) {
+                            throw exchangeError;
+                        }
+
+                        console.log('✅ Session exchanged successfully:', data.session);
+                        
+                        // Store session in localStorage manually as backup
+                        if (data.session) {
+                            localStorage.setItem('sb-caqtxoiihlgfsxraawwn-auth-token', JSON.stringify({
+                                access_token: data.session.access_token,
+                                refresh_token: data.session.refresh_token,
+                                expires_at: Date.now() + (data.session.expires_in * 1000)
+                            }));
+                        }
+                        
+                        // نحذف الـ code من URL ونرجع للصفحة الرئيسية
+                        window.location.href = 'index.html?auth=success';
+                        
+                    } catch (err) {
+                        console.error('❌ Exchange error:', err);
+                        window.location.href = 'index.html?auth_error=' + encodeURIComponent(err.message);
+                    }
+                } else {
+                    // مفيش code، نرجع للرئيسية
+                    window.location.href = 'index.html';
+                }
+            } catch (e) {
+                console.error('❌ Fatal error in callback:', e);
+                window.location.href = 'index.html?auth_error=' + encodeURIComponent(e.message);
+            }
+        }
+
+        // Run immediately
+        handleCallback();
+    </script>
+</body>
+</html>
