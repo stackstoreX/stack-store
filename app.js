@@ -1,6 +1,10 @@
 const SUPABASE_URL = 'https://caqtxoiihlgfsxraawwn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcXR4b2lpaGxnZnN4cmFhd3duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NDYzMTUsImV4cCI6MjA5ODMyMjMxNX0.UTp-E7vaigpQ_UwvNPoX3ijmJBpIBz0_bAvOB2SQBaI';
 
+// التأكد من Supabase URL
+console.log('🔍 Supabase URL:', SUPABASE_URL);
+console.log('🔍 Current Domain:', window.location.origin);
+
 // Initialize Supabase client
 let supabase;
 try {
