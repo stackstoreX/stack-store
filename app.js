@@ -66,9 +66,10 @@ const products = [
         name: 'Adobe Creative Cloud',
         desc: 'جميع برامج Adobe Creative Cloud الكاملة في اشتراك واحد',
         durations: [
-            { period: '1 شهر', price: 350, oldPrice: 500, available: true },
-            { period: '6 شهور', price: 1500, oldPrice: 2100, available: true },
-            { period: '12 شهر', price: 2100, oldPrice: 4200, available: true }
+            { period: '1 شهر', price: 379, oldPrice: 1596, available: true },
+            { period: 'شهرين', price: 649, oldPrice: 2100, available: true },
+            { period: '3 شهور', price: 899, oldPrice: 3000, available: true },
+            { period: '4 شهور', price: 1100, oldPrice: 4200, available: true }
         ],
         defaultDuration: '1 شهر',
         category: 'design',
