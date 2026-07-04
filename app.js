@@ -1,3 +1,5 @@
+//app.js
+
 const SUPABASE_URL = 'https://caqtxoiihlgfsxraawwn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhcXR4b2lpaGxnZnN4cmFhd3duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NDYzMTUsImV4cCI6MjA5ODMyMjMxNX0.UTp-E7vaigpQ_UwvNPoX3ijmJBpIBz0_bAvOB2SQBaI';
 
@@ -123,7 +125,7 @@ const products = [
             { period: '6 شهور', price: 1100, oldPrice: 1500, available: false },
             { period: '12 شهر', price: 750, oldPrice: 3000, available: true }
         ],
-        defaultDuration: '1 شهر',
+        defaultDuration: '12 شهر',
         category: 'design',
         icon: '',
         iconImage: 'figma.png',
@@ -227,7 +229,7 @@ const paymentMethods = {
         name: 'فودافون كاش',
         icon: 'fa-mobile-alt',
         iconClass: 'vodafone',
-        number: '201018484572',
+        number: '+20 101 848 4572',
         nameDisplay: 'Stack Store',
         instructions: [
             'افتح تطبيق فودافون كاش',
@@ -242,16 +244,16 @@ const paymentMethods = {
         name: 'إنستا باي',
         icon: 'fa-university',
         iconClass: 'instapay',
-        number: 'stackstore@instapay',
+        number: '+20 109 504 0368',
         nameDisplay: 'Stack Store',
         instructions: [
             'افتح تطبيق إنستا باي',
             'اختر "تحويل"',
-            'أدخل الـ Username: stackstore',
+            'أدخل الـ 010195040368',
             'أدخل المبلغ المطلوب',
             'أرسل إيصال التحويل على واتساب'
         ],
-        whatsapp: '201000000000'
+        whatsapp: '201018484572'
     },
     fawry: {
         name: 'فوري',
@@ -340,8 +342,24 @@ function initCurrency() {
 // Toggle dropdown
 function toggleCurrencyDropdown(event) {
     event.stopPropagation();
-    document.getElementById('currencyDropdown').classList.toggle('active');
-    document.getElementById('currencyBtn').classList.toggle('active');
+    
+    // Close other dropdowns first
+    document.getElementById('accountDropdown').classList.remove('active');
+    
+    const dropdown = document.getElementById('currencyDropdown');
+    const btn = document.getElementById('currencyBtn');
+    
+    dropdown.classList.toggle('active');
+    btn.classList.toggle('active');
+    
+    // On mobile, ensure dropdown is visible
+    if (window.innerWidth <= 768 && dropdown.classList.contains('active')) {
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = '70px';
+        dropdown.style.right = '10px';
+        dropdown.style.left = '10px';
+        dropdown.style.width = 'auto';
+    }
 }
 
 // Close on outside click
@@ -662,8 +680,364 @@ async function initAuth() {
         authState = { isLoading: false, isAuthenticated: false, user: null, error: e };
     }
     
-    // ✅ حدّث الـ UI بعد ما تخلص
-    updateUIForAuth();
+        // ✅ حدّث الـ UI بعد ما تخلص
+        updateUIForAuth();
+        
+        // 🔍 فحص إذا كان مستخدم Google جديد ومحتاج إعداد
+        if (authState.isAuthenticated && currentUser) {
+            const needsSetup = await checkIfUserNeedsSetup();
+            if (needsSetup) {
+                console.log('🔧 User needs setup - showing modal');
+                setTimeout(() => {
+                    showGoogleSetupModal();
+                }, 800);
+            }
+        }
+}
+
+// ===== Check if user needs setup (GOOGLE ONLY) =====
+async function checkIfUserNeedsSetup() {
+    if (!currentUser) return false;
+    
+    // ✅ لو جاي من واجهة "إنشاء حساب" (Email/Password)، ما يحتاج واجهة تانية
+    // نتحقق إذا الـ user عنده metadata signup_method = 'email'
+    if (currentUser.user_metadata?.signup_method === 'email') {
+        console.log('ℹ️ Email signup user - no setup needed');
+        return false;
+    }
+    
+    // ✅ لو جاي من Google OAuth
+    const isGoogleUser = currentUser.app_metadata?.provider === 'google' ||
+                         currentUser.identities?.some(id => id.provider === 'google');
+    
+    if (!isGoogleUser) {
+        console.log('ℹ️ Not Google user - no setup needed');
+        return false;
+    }
+    
+    // ✅ Google user - نتحقق إذا عنده username و password
+    try {
+        const { data: userData, error } = await supabase
+            .from('users')
+            .select('username, has_password')
+            .eq('id', currentUser.id)
+            .single();
+        
+        // لو عنده الاثنين، ما يحتاج
+        if (userData && userData.username && userData.has_password) {
+            console.log('✅ Google user already has username + password');
+            return false;
+        }
+        
+        // لو ناقص شي، يحتاج واجهة الإعداد
+        console.log('🔧 Google user needs setup');
+        return true;
+        
+    } catch (e) {
+        // User not found in table → needs setup
+        console.log('🔧 Google user not in DB - needs setup');
+        return true;
+    }
+}
+
+// ===== Show Google User Setup Modal =====
+function showGoogleSetupModal() {
+    // Create modal if not exists
+    let modal = document.getElementById('googleSetupModal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'googleSetupModal';
+        modal.className = 'modal-overlay';
+        modal.style.zIndex = '3000'; // Above everything
+        modal.innerHTML = `
+            <div class="modal" style="max-width: 420px;">
+                <div class="auth-content" style="padding: 40px;">
+                    <div class="auth-header">
+                        <div class="auth-icon" style="background: linear-gradient(135deg, #DB4437, #C53929);">
+                            <i class="fab fa-google"></i>
+                        </div>
+                        <h2>أكمل إعداد حسابك</h2>
+                        <p>للأمان، أنشئ يوزرنييم وكلمة مرور لحسابك</p>
+                    </div>
+                    
+                    <!-- Username -->
+                    <div class="form-group-customer username-group" style="margin-bottom: 20px;">
+                        <div class="input-wrapper">
+                            <input type="text" id="googleSetupUsername" placeholder=" " 
+                                   oninput="validateGoogleSetupUsername(this.value)">
+                            <label><i class="fas fa-at"></i> اسم المستخدم</label>
+                            <div class="input-glow"></div>
+                            <div class="username-status" id="googleSetupUsernameStatus">
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                            </div>
+                        </div>
+                        <small id="googleSetupUsernameError" class="error-msg">اسم المستخدم يجب أن يكون بين 4-15 حرف، أحرف صغيرة فقط</small>
+                        <small id="googleSetupUsernameHint" class="hint-msg">أحرف صغيرة فقط، 4-15 حرف</small>
+                    </div>
+                    
+                    <!-- Password -->
+                    <div class="form-group-customer password-group" style="margin-bottom: 20px;">
+                        <div class="input-wrapper">
+                            <input type="password" id="googleSetupPassword" placeholder=" " 
+                                   oninput="checkGoogleSetupForm()">
+                            <label><i class="fas fa-lock"></i> كلمة المرور</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <button type="button" class="toggle-password" onclick="togglePassword('googleSetupPassword')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Confirm Password -->
+                    <div class="form-group-customer password-group" style="margin-bottom: 25px;">
+                        <div class="input-wrapper">
+                            <input type="password" id="googleSetupPasswordConfirm" placeholder=" " 
+                                   oninput="checkGoogleSetupForm()">
+                            <label><i class="fas fa-lock"></i> تأكيد كلمة المرور</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <button type="button" class="toggle-password" onclick="togglePassword('googleSetupPasswordConfirm')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Error message -->
+                    <div id="googleSetupError" style="display: none; color: #EF4444; font-size: 0.85rem; margin-bottom: 15px; text-align: center;">
+                        <i class="fas fa-exclamation-circle"></i> <span id="googleSetupErrorText"></span>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-full" id="googleSetupSaveBtn" onclick="saveGoogleSetup()" disabled>
+                        <span>حفظ وإكمال</span>
+                        <i class="fas fa-check"></i>
+                    </button>
+                    
+                    <p style="text-align: center; margin-top: 15px; font-size: 0.8rem; color: var(--gray);">
+                        <i class="fas fa-info-circle"></i> مطلوب لإتمام عمليات الشراء
+                    </p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // Reset form
+    document.getElementById('googleSetupUsername').value = '';
+    document.getElementById('googleSetupPassword').value = '';
+    document.getElementById('googleSetupPasswordConfirm').value = '';
+    document.getElementById('googleSetupError').style.display = 'none';
+    
+    // Reset validation states
+    const input = document.getElementById('googleSetupUsername');
+    const status = document.getElementById('googleSetupUsernameStatus');
+    if (input) {
+        input.classList.remove('valid', 'invalid', 'checking');
+    }
+    if (status) {
+        status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+        status.className = 'username-status checking';
+    }
+    
+    updateGoogleSetupButton();
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeGoogleSetupModal() {
+    const modal = document.getElementById('googleSetupModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+// ===== Validate Username for Google Setup =====
+let googleSetupUsernameTimeout;
+
+function validateGoogleSetupUsername(value) {
+    const input = document.getElementById('googleSetupUsername');
+    const status = document.getElementById('googleSetupUsernameStatus');
+    const errorMsg = document.getElementById('googleSetupUsernameError');
+    const hintMsg = document.getElementById('googleSetupUsernameHint');
+
+    if (!input || !status) return;
+
+    const trimmed = value.trim().toLowerCase();
+
+    // Empty
+    if (!trimmed) {
+        input.classList.remove('valid', 'invalid', 'checking');
+        status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+        status.className = 'username-status checking';
+        if (errorMsg) errorMsg.classList.remove('show');
+        if (hintMsg) hintMsg.style.display = 'flex';
+        updateGoogleSetupButton();
+        return;
+    }
+
+    // Check format
+    const isValidFormat = /^[a-z0-9_]{4,15}$/.test(trimmed);
+
+    if (!isValidFormat) {
+        input.classList.add('invalid');
+        input.classList.remove('valid', 'checking');
+        status.innerHTML = '<i class="fas fa-times-circle"></i>';
+        status.className = 'username-status invalid';
+        if (errorMsg) errorMsg.classList.add('show');
+        if (hintMsg) hintMsg.style.display = 'none';
+        updateGoogleSetupButton();
+        return;
+    }
+
+    // Valid format, check availability
+    input.classList.add('checking');
+    input.classList.remove('valid', 'invalid');
+    status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    status.className = 'username-status checking';
+    if (errorMsg) errorMsg.classList.remove('show');
+    if (hintMsg) hintMsg.style.display = 'none';
+
+    clearTimeout(googleSetupUsernameTimeout);
+    googleSetupUsernameTimeout = setTimeout(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('username')
+                .eq('username', trimmed)
+                .single();
+
+            if (data) {
+                // Taken
+                input.classList.add('invalid');
+                input.classList.remove('valid', 'checking');
+                status.innerHTML = '<i class="fas fa-times-circle"></i>';
+                status.className = 'username-status taken';
+            } else {
+                // Available
+                input.classList.add('valid');
+                input.classList.remove('invalid', 'checking');
+                status.innerHTML = '<i class="fas fa-check-circle"></i>';
+                status.className = 'username-status available';
+            }
+        } catch (e) {
+            // Available (not found)
+            input.classList.add('valid');
+            input.classList.remove('invalid', 'checking');
+            status.innerHTML = '<i class="fas fa-check-circle"></i>';
+            status.className = 'username-status available';
+        }
+        updateGoogleSetupButton();
+    }, 400);
+}
+
+// ===== Check Form Validity =====
+function checkGoogleSetupForm() {
+    updateGoogleSetupButton();
+}
+
+function updateGoogleSetupButton() {
+    const btn = document.getElementById('googleSetupSaveBtn');
+    if (!btn) return;
+
+    const usernameInput = document.getElementById('googleSetupUsername');
+    const password = document.getElementById('googleSetupPassword')?.value || '';
+    const confirm = document.getElementById('googleSetupPasswordConfirm')?.value || '';
+
+    const usernameValid = usernameInput && usernameInput.classList.contains('valid');
+    const passwordValid = password.length >= 6;
+    const matchValid = password === confirm && confirm.length > 0;
+
+    btn.disabled = !(usernameValid && passwordValid && matchValid);
+    btn.style.opacity = btn.disabled ? '0.5' : '1';
+}
+
+// ===== Save Google User Setup =====
+async function saveGoogleSetup() {
+    const username = document.getElementById('googleSetupUsername').value.trim().toLowerCase();
+    const password = document.getElementById('googleSetupPassword').value;
+    const errorDiv = document.getElementById('googleSetupError');
+    const errorText = document.getElementById('googleSetupErrorText');
+    const btn = document.getElementById('googleSetupSaveBtn');
+
+    if (!currentUser) {
+        showToast('❌ خطأ: المستخدم غير مسجل');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جاري الحفظ...';
+
+    try {
+        // 1. Set password in Supabase Auth
+        const { error: passwordError } = await supabase.auth.updateUser({
+            password: password
+        });
+
+        if (passwordError) {
+            throw new Error('فشل تعيين كلمة المرور: ' + passwordError.message);
+        }
+
+        // 2. Update user in our database
+        const displayName = currentUser.user_metadata?.full_name || 
+                           currentUser.user_metadata?.name || 
+                           username;
+
+        const { error: updateError } = await supabase
+            .from('users')
+            .upsert({
+                id: currentUser.id,
+                username: username,
+                display_name: displayName,
+                email: currentUser.email,
+                photo_url: currentUser.user_metadata?.avatar_url || null,
+                has_password: true,
+                credits: 0,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+
+        if (updateError) {
+            throw new Error('فشل حفظ البيانات: ' + updateError.message);
+        }
+
+        // 3. Update localStorage
+        const userData = {
+            display_name: displayName,
+            username: username,
+            email: currentUser.email,
+            photo_url: currentUser.user_metadata?.avatar_url || null,
+            credits: 0,
+            has_password: true,
+            saved_at: new Date().toISOString()
+        };
+        localStorage.setItem('stackStoreUserData_' + currentUser.id, JSON.stringify(userData));
+
+        // 4. Update currentUser metadata
+        currentUser.user_metadata = currentUser.user_metadata || {};
+        currentUser.user_metadata.username = username;
+
+        // 5. Success
+        showToast('✅ تم إكمال إعداد الحساب بنجاح!');
+        
+        // Update UI
+        updateUIForAuth();
+        
+        // Close modal
+        setTimeout(() => {
+            closeGoogleSetupModal();
+        }, 1000);
+
+    } catch (error) {
+        console.error('❌ Setup error:', error);
+        if (errorDiv && errorText) {
+            errorDiv.style.display = 'block';
+            errorText.textContent = error.message;
+        }
+        showToast('❌ خطأ: ' + error.message);
+        
+        btn.disabled = false;
+        btn.innerHTML = '<span>حفظ وإكمال</span><i class="fas fa-check"></i>';
+    }
 }
 
 // Listen for auth changes - FINAL FIX
@@ -1012,7 +1386,6 @@ async function loginWithGoogle() {
     try {
         console.log('🔐 Starting Google login...');
         
-        // نحدد رابط الـ callback بوضوح
         const redirectTo = window.location.origin + '/auth-callback.html';
         console.log('Redirect to:', redirectTo);
         
@@ -1032,7 +1405,6 @@ async function loginWithGoogle() {
             throw error;
         }
         
-        // data.url هو رابط Google لتسجيل الدخول
         if (data?.url) {
             console.log('✅ Redirecting to Google...');
             window.location.href = data.url;
@@ -1041,6 +1413,453 @@ async function loginWithGoogle() {
     } catch (error) {
         console.error('❌ Google login error:', error);
         showToast('❌ حدث خطأ: ' + error.message);
+    }
+}
+
+// ===== Check if user needs to set password after Google login =====
+async function checkGoogleUserNeedsSetup() {
+    if (!currentUser) return false;
+    
+    // Check if user logged in with OAuth (Google)
+    const isOAuthUser = currentUser.app_metadata?.provider === 'google' || 
+                        currentUser.identities?.some(id => id.provider === 'google');
+    
+    if (!isOAuthUser) return false;
+    
+    // Check if user already has a password set
+    try {
+        const { data: hasPassword } = await supabase.rpc('user_has_password', {
+            p_user_id: currentUser.id
+        });
+        
+        // If no password, they need setup
+        if (hasPassword === false) {
+            return true;
+        }
+    } catch (e) {
+        // Fallback: check if user has username in our users table
+        const { data: userData } = await supabase
+            .from('users')
+            .select('username, has_password')
+            .eq('id', currentUser.id)
+            .single();
+            
+        if (userData && !userData.has_password) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// ===== Show Google User Setup Modal =====
+function showGoogleUserSetup() {
+    // Create modal if not exists
+    let modal = document.getElementById('googleSetupModal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'googleSetupModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal" style="max-width: 420px;">
+                <div class="auth-content" style="padding: 40px;">
+                    <div class="auth-header">
+                        <div class="auth-icon"><i class="fas fa-user-lock"></i></div>
+                        <h2>أكمل إعداد حسابك</h2>
+                        <p>للأمان، أنشئ يوزرنييم وكلمة مرور لحسابك</p>
+                    </div>
+                    
+                    <div class="success-msg" id="googleSetupSuccess" style="display: none;">
+                        <i class="fas fa-check-circle"></i> تم الحفظ بنجاح!
+                    </div>
+                    
+                    <!-- Username -->
+                    <div class="form-group-customer username-group">
+                        <div class="input-wrapper">
+                            <input type="text" id="googleSetupUsername" placeholder=" " 
+                                   oninput="validateSetupUsername(this.value)"
+                                   onblur="checkSetupUsernameAvailability(this.value)">
+                            <label><i class="fas fa-at"></i> اسم المستخدم (Username)</label>
+                            <div class="input-glow"></div>
+                            <div class="username-status" id="googleSetupUsernameStatus">
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                            </div>
+                        </div>
+                        <small id="googleSetupUsernameError" class="error-msg">اسم المستخدم يجب أن يكون بين 4-15 حرف، أحرف صغيرة فقط</small>
+                        <small id="googleSetupUsernameHint" class="hint-msg">أحرف صغيرة فقط، 4-15 حرف</small>
+                    </div>
+                    
+                    <!-- Password -->
+                    <div class="form-group-customer password-group">
+                        <div class="input-wrapper">
+                            <input type="password" id="googleSetupPassword" placeholder=" " 
+                                   oninput="validateGoogleSetupPassword()">
+                            <label><i class="fas fa-lock"></i> كلمة المرور</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <button type="button" class="toggle-password" onclick="togglePassword('googleSetupPassword')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Password Strength -->
+                    <div id="passwordStrengthBox" style="margin-bottom: 20px; display: none;">
+                        <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                            <div id="strengthBar1" style="flex: 1; height: 4px; background: var(--glass-border); border-radius: 2px; transition: all 0.3s;"></div>
+                            <div id="strengthBar2" style="flex: 1; height: 4px; background: var(--glass-border); border-radius: 2px; transition: all 0.3s;"></div>
+                            <div id="strengthBar3" style="flex: 1; height: 4px; background: var(--glass-border); border-radius: 2px; transition: all 0.3s;"></div>
+                            <div id="strengthBar4" style="flex: 1; height: 4px; background: var(--glass-border); border-radius: 2px; transition: all 0.3s;"></div>
+                        </div>
+                        <span id="strengthText" style="font-size: 0.8rem; color: var(--gray);"></span>
+                    </div>
+                    
+                    <!-- Confirm Password -->
+                    <div class="form-group-customer password-group">
+                        <div class="input-wrapper">
+                            <input type="password" id="googleSetupPasswordConfirm" placeholder=" " 
+                                   oninput="validateGoogleSetupPasswordMatch()">
+                            <label><i class="fas fa-lock"></i> تأكيد كلمة المرور</label>
+                            <div class="input-glow"></div>
+                        </div>
+                        <button type="button" class="toggle-password" onclick="togglePassword('googleSetupPasswordConfirm')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <small id="googleSetupPasswordError" class="error-msg" style="display: none; margin-bottom: 15px;">
+                        كلمتا المرور غير متطابقتين
+                    </small>
+                    
+                    <!-- Rules -->
+                    <div class="username-rules" style="margin: 20px 0;">
+                        <div class="rule" id="ruleUsername">
+                            <i class="fas fa-times-circle"></i>
+                            <span>اسم مستخدم فريد (4-15 حرف)</span>
+                        </div>
+                        <div class="rule" id="rulePasswordLength">
+                            <i class="fas fa-times-circle"></i>
+                            <span>كلمة مرور 8 أحرف على الأقل</span>
+                        </div>
+                        <div class="rule" id="rulePasswordMatch">
+                            <i class="fas fa-times-circle"></i>
+                            <span>كلمتا المرور متطابقتان</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-full" id="googleSetupSaveBtn" onclick="saveGoogleUserSetup()" disabled>
+                        <span>حفظ وإكمال</span>
+                        <i class="fas fa-check"></i>
+                    </button>
+                    
+                    <p style="text-align: center; margin-top: 15px; font-size: 0.85rem; color: var(--gray);">
+                        <i class="fas fa-info-circle"></i>
+                        مطلوب لإتمام عمليات الشراء
+                    </p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Reset form
+    document.getElementById('googleSetupUsername').value = '';
+    document.getElementById('googleSetupPassword').value = '';
+    document.getElementById('googleSetupPasswordConfirm').value = '';
+    document.getElementById('googleSetupSuccess').style.display = 'none';
+    updateGoogleSetupButton();
+}
+
+function closeGoogleUserSetup() {
+    const modal = document.getElementById('googleSetupModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+// ===== Validate Google Setup Username =====
+function validateSetupUsername(value) {
+    const input = document.getElementById('googleSetupUsername');
+    const status = document.getElementById('googleSetupUsernameStatus');
+    const errorMsg = document.getElementById('googleSetupUsernameError');
+    const hintMsg = document.getElementById('googleSetupUsernameHint');
+    const rule = document.getElementById('ruleUsername');
+
+    if (!input || !status) return;
+
+    const trimmed = value.trim().toLowerCase();
+    
+    if (!trimmed) {
+        input.classList.remove('valid', 'invalid', 'checking');
+        status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+        status.className = 'username-status checking';
+        if (errorMsg) errorMsg.classList.remove('show');
+        if (hintMsg) hintMsg.style.display = 'flex';
+        if (rule) { rule.className = 'rule invalid'; rule.querySelector('i').className = 'fas fa-times-circle'; }
+        updateGoogleSetupButton();
+        return;
+    }
+
+    const isValidFormat = /^[a-z0-9_]{4,15}$/.test(trimmed);
+
+    if (!isValidFormat) {
+        input.classList.add('invalid');
+        input.classList.remove('valid', 'checking');
+        status.innerHTML = '<i class="fas fa-times-circle"></i>';
+        status.className = 'username-status invalid';
+        if (errorMsg) errorMsg.classList.add('show');
+        if (hintMsg) hintMsg.style.display = 'none';
+        if (rule) { rule.className = 'rule invalid'; rule.querySelector('i').className = 'fas fa-times-circle'; }
+        updateGoogleSetupButton();
+        return;
+    }
+
+    // Valid format, check availability
+    input.classList.add('checking');
+    input.classList.remove('valid', 'invalid');
+    status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    status.className = 'username-status checking';
+    if (errorMsg) errorMsg.classList.remove('show');
+    if (hintMsg) hintMsg.style.display = 'none';
+    
+    // Debounce availability check
+    clearTimeout(window.usernameCheckTimeout);
+    window.usernameCheckTimeout = setTimeout(() => {
+        checkSetupUsernameAvailability(trimmed);
+    }, 500);
+}
+
+async function checkSetupUsernameAvailability(username) {
+    const input = document.getElementById('googleSetupUsername');
+    const status = document.getElementById('googleSetupUsernameStatus');
+    const rule = document.getElementById('ruleUsername');
+
+    if (!input || !status) return;
+
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('username')
+            .eq('username', username)
+            .single();
+
+        if (data) {
+            // Username taken
+            input.classList.add('invalid');
+            input.classList.remove('valid', 'checking');
+            status.innerHTML = '<i class="fas fa-times-circle"></i>';
+            status.className = 'username-status taken';
+            if (rule) { rule.className = 'rule invalid'; rule.querySelector('i').className = 'fas fa-times-circle'; }
+        } else {
+            // Username available
+            input.classList.add('valid');
+            input.classList.remove('invalid', 'checking');
+            status.innerHTML = '<i class="fas fa-check-circle"></i>';
+            status.className = 'username-status available';
+            if (rule) { rule.className = 'rule valid'; rule.querySelector('i').className = 'fas fa-check-circle'; }
+        }
+    } catch (e) {
+        // Available (error means not found)
+        input.classList.add('valid');
+        input.classList.remove('invalid', 'checking');
+        status.innerHTML = '<i class="fas fa-check-circle"></i>';
+        status.className = 'username-status available';
+        if (rule) { rule.className = 'rule valid'; rule.querySelector('i').className = 'fas fa-check-circle'; }
+    }
+    
+    updateGoogleSetupButton();
+}
+
+// ===== Password Validation =====
+function validateGoogleSetupPassword() {
+    const password = document.getElementById('googleSetupPassword').value;
+    const rule = document.getElementById('rulePasswordLength');
+    const strengthBox = document.getElementById('passwordStrengthBox');
+    
+    if (strengthBox) {
+        strengthBox.style.display = password ? 'block' : 'none';
+    }
+    
+    // Calculate strength
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    
+    // Update bars
+    const bars = [
+        document.getElementById('strengthBar1'),
+        document.getElementById('strengthBar2'),
+        document.getElementById('strengthBar3'),
+        document.getElementById('strengthBar4')
+    ];
+    const strengthText = document.getElementById('strengthText');
+    
+    const colors = ['#EF4444', '#F59E0B', '#3B82F6', '#10B981'];
+    const labels = ['ضعيفة جداً', 'ضعيفة', 'متوسطة', 'قوية', 'قوية جداً'];
+    
+    bars.forEach((bar, i) => {
+        if (bar) {
+            if (i < strength) {
+                bar.style.background = colors[Math.min(strength - 1, 3)];
+            } else {
+                bar.style.background = 'var(--glass-border)';
+            }
+        }
+    });
+    
+    if (strengthText) {
+        strengthText.textContent = labels[Math.min(strength, 4)];
+        strengthText.style.color = colors[Math.min(strength - 1, 3)] || 'var(--gray)';
+    }
+    
+    // Update rule
+    if (rule) {
+        if (password.length >= 8) {
+            rule.className = 'rule valid';
+            rule.querySelector('i').className = 'fas fa-check-circle';
+        } else {
+            rule.className = 'rule invalid';
+            rule.querySelector('i').className = 'fas fa-times-circle';
+        }
+    }
+    
+    validateGoogleSetupPasswordMatch();
+    updateGoogleSetupButton();
+}
+
+function validateGoogleSetupPasswordMatch() {
+    const password = document.getElementById('googleSetupPassword').value;
+    const confirm = document.getElementById('googleSetupPasswordConfirm').value;
+    const error = document.getElementById('googleSetupPasswordError');
+    const rule = document.getElementById('rulePasswordMatch');
+    
+    if (!confirm) {
+        if (error) error.style.display = 'none';
+        if (rule) { rule.className = 'rule invalid'; rule.querySelector('i').className = 'fas fa-times-circle'; }
+        updateGoogleSetupButton();
+        return;
+    }
+    
+    const match = password === confirm && password.length >= 8;
+    
+    if (error) {
+        error.style.display = match ? 'none' : 'block';
+    }
+    
+    if (rule) {
+        if (match) {
+            rule.className = 'rule valid';
+            rule.querySelector('i').className = 'fas fa-check-circle';
+        } else {
+            rule.className = 'rule invalid';
+            rule.querySelector('i').className = 'fas fa-times-circle';
+        }
+    }
+    
+    updateGoogleSetupButton();
+}
+
+function updateGoogleSetupButton() {
+    const btn = document.getElementById('googleSetupSaveBtn');
+    if (!btn) return;
+    
+    const username = document.getElementById('googleSetupUsername');
+    const password = document.getElementById('googleSetupPassword');
+    const confirm = document.getElementById('googleSetupPasswordConfirm');
+    
+    const usernameValid = username && username.classList.contains('valid');
+    const passwordValid = password && password.value.length >= 8;
+    const matchValid = password && confirm && password.value === confirm.value && confirm.value.length > 0;
+    
+    btn.disabled = !(usernameValid && passwordValid && matchValid);
+    btn.style.opacity = btn.disabled ? '0.5' : '1';
+}
+
+// ===== Save Google User Setup =====
+async function saveGoogleUserSetup() {
+    const username = document.getElementById('googleSetupUsername').value.trim().toLowerCase();
+    const password = document.getElementById('googleSetupPassword').value;
+    
+    if (!currentUser) {
+        showToast('❌ خطأ: المستخدم غير مسجل');
+        return;
+    }
+    
+    const btn = document.getElementById('googleSetupSaveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جاري الحفظ...';
+    
+    try {
+        // 1. Set password in Supabase Auth
+        const { error: passwordError } = await supabase.auth.updateUser({
+            password: password
+        });
+        
+        if (passwordError) {
+            throw new Error('فشل تعيين كلمة المرور: ' + passwordError.message);
+        }
+        
+        // 2. Update user profile with username
+        const { error: profileError } = await supabase.rpc('update_user_profile', {
+            p_username: username,
+            p_display_name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || username,
+            p_birth_date: null
+        });
+        
+        if (profileError) {
+            // Fallback: insert directly
+            const { error: insertError } = await supabase
+                .from('users')
+                .upsert({
+                    id: currentUser.id,
+                    username: username,
+                    display_name: currentUser.user_metadata?.full_name || username,
+                    email: currentUser.email,
+                    photo_url: currentUser.user_metadata?.avatar_url || null,
+                    has_password: true,
+                    credits: 0
+                }, { onConflict: 'id' });
+                
+            if (insertError) throw insertError;
+        }
+        
+        // 3. Update localStorage
+        const userData = {
+            display_name: currentUser.user_metadata?.full_name || username,
+            username: username,
+            email: currentUser.email,
+            photo_url: currentUser.user_metadata?.avatar_url || null,
+            credits: 0,
+            has_password: true,
+            saved_at: new Date().toISOString()
+        };
+        localStorage.setItem('stackStoreUserData_' + currentUser.id, JSON.stringify(userData));
+        
+        // 4. Show success
+        document.getElementById('googleSetupSuccess').style.display = 'block';
+        
+        showToast('✅ تم إكمال إعداد الحساب بنجاح!');
+        
+        // 5. Update UI
+        updateUIForAuth();
+        
+        // 6. Close modal after delay
+        setTimeout(() => {
+            closeGoogleUserSetup();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('❌ Setup error:', error);
+        showToast('❌ خطأ: ' + error.message);
+        btn.disabled = false;
+        btn.innerHTML = '<span>حفظ وإكمال</span><i class="fas fa-check"></i>';
     }
 }
 
@@ -1096,12 +1915,44 @@ async function registerWithEmail() {
     }
 
     try {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
             email: email,
-            password: password
+            password: password,
+            options: {
+                data: {
+                    signup_method: 'email'  // ✅ نحدد إنه تسجيل بالإيميل
+                }
+            }
         });
         if (error) throw error;
+        
+        // ✅ بعد التسجيل، نحفظ الـ username اللي عمله في الـ register form
+        const username = document.getElementById('registerUsername')?.value?.trim().toLowerCase();
+        if (username && data?.user) {
+            // نحفظ في DB مباشرة
+            await supabase
+                .from('users')
+                .upsert({
+                    id: data.user.id,
+                    username: username,
+                    display_name: username,
+                    email: email,
+                    has_password: true,
+                    credits: 0,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'id' });
+                
+            // نحدث metadata
+            await supabase.auth.updateUser({
+                data: { 
+                    username: username,
+                    signup_method: 'email'
+                }
+            });
+        }
+        
         showToast('تم إنشاء الحساب! يرجى تأكيد الإيميل');
+        closeAuthModal();
     } catch (error) {
         if (error.message.includes('already registered')) {
             showToast('هذا الإيميل مستخدم بالفعل');
