@@ -1633,45 +1633,65 @@ function validateSetupUsername(value) {
     }, 500);
 }
 
-async function checkSetupUsernameAvailability(username) {
-    const input = document.getElementById('googleSetupUsername');
-    const status = document.getElementById('googleSetupUsernameStatus');
-    const rule = document.getElementById('ruleUsername');
+async function checkUsernameAvailability(username) {
+    const input = document.getElementById('registerUsername');
+    const status = document.getElementById('usernameStatus');
+    const errorMsg = document.getElementById('usernameError');
 
     if (!input || !status) return;
 
     try {
+        // ✅ استخدم .maybeSingle() بدل .single() عشان ميرجعش error لو مفيش نتائج
         const { data, error } = await supabase
             .from('users')
             .select('username')
             .eq('username', username)
-            .single();
+            .maybeSingle();
+
+        // ✅ لو في error حقيقي (مش مجرد "مفيش نتائج")
+        if (error && error.code !== 'PGRST116') {
+            console.error('❌ Database error:', error);
+            input.classList.add('invalid');
+            input.classList.remove('valid', 'checking');
+            status.innerHTML = '<i class="fas fa-times-circle"></i>';
+            status.className = 'username-status invalid';
+            if (errorMsg) {
+                errorMsg.textContent = 'خطأ في الاتصال، جرب مرة أخرى';
+                errorMsg.classList.add('show');
+            }
+            return;
+        }
 
         if (data) {
-            // Username taken
+            // ✅ مستخدم بالفعل
             input.classList.add('invalid');
             input.classList.remove('valid', 'checking');
             status.innerHTML = '<i class="fas fa-times-circle"></i>';
             status.className = 'username-status taken';
-            if (rule) { rule.className = 'rule invalid'; rule.querySelector('i').className = 'fas fa-times-circle'; }
+            if (errorMsg) {
+                errorMsg.textContent = 'اسم المستخدم مستخدم بالفعل';
+                errorMsg.classList.add('show');
+            }
         } else {
-            // Username available
+            // ✅ متاح
             input.classList.add('valid');
             input.classList.remove('invalid', 'checking');
             status.innerHTML = '<i class="fas fa-check-circle"></i>';
             status.className = 'username-status available';
-            if (rule) { rule.className = 'rule valid'; rule.querySelector('i').className = 'fas fa-check-circle'; }
+            if (errorMsg) errorMsg.classList.remove('show');
         }
     } catch (e) {
-        // Available (error means not found)
-        input.classList.add('valid');
-        input.classList.remove('invalid', 'checking');
-        status.innerHTML = '<i class="fas fa-check-circle"></i>';
-        status.className = 'username-status available';
-        if (rule) { rule.className = 'rule valid'; rule.querySelector('i').className = 'fas fa-check-circle'; }
+        // ✅ خطأ في الاتصال مش "متاح"
+        console.error('❌ Network error:', e);
+        input.classList.add('invalid');
+        input.classList.remove('valid', 'checking');
+        status.innerHTML = '<i class="fas fa-times-circle"></i>';
+        status.className = 'username-status invalid';
+        if (errorMsg) {
+            errorMsg.textContent = 'خطأ في الاتصال، جرب مرة أخرى';
+            errorMsg.classList.add('show');
+        }
     }
-    
-    updateGoogleSetupButton();
 }
 
 // ===== Password Validation =====
@@ -2184,16 +2204,55 @@ async function saveAccountSettings() {
             return;
         }
 
-        // 1. حفظ في Supabase
-        const { data, error } = await supabase.rpc('update_user_profile', {
-            p_username: username,
-            p_display_name: displayName,
-            p_birth_date: birthDate || null
-        });
+        // 🔍 نجيب اليوزرنيم الحالي عشان نعرف لو بيغيره ولا لأ
+        const { data: currentUserData, error: fetchError } = await supabase
+            .from('users')
+            .select('username')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+        if (fetchError) {
+            console.error('❌ Fetch error:', fetchError);
+            showToast('❌ خطأ في جلب البيانات: ' + fetchError.message);
+            return;
+        }
+
+        const currentUsername = currentUserData?.username || '';
+
+        // ✅ لو بيغير اليوزرنيم، نتأكد إنه مش مستخدم قبل كده
+        if (username && username !== currentUsername) {
+            const { data: existingUser, error: checkError } = await supabase
+                .from('users')
+                .select('username')
+                .eq('username', username)
+                .maybeSingle();
+
+            if (checkError && checkError.code !== 'PGRST116') {
+                console.error('❌ Check error:', checkError);
+                showToast('❌ خطأ في فحص اليوزرنيم');
+                return;
+            }
+
+            if (existingUser) {
+                showToast('⚠️ اسم المستخدم مستخدم بالفعل');
+                return;
+            }
+        }
+
+        // 1. ✅ حفظ في Supabase باستخدام .update() بدل RPC
+        const { error } = await supabase
+            .from('users')
+            .update({
+                display_name: displayName,
+                username: username || currentUsername,
+                birth_date: birthDate || null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', currentUser.id);
 
         if (error) {
-            console.error('❌ RPC error:', error);
-            showToast('⚠️ فشل: ' + error.message);
+            console.error('❌ Update error:', error);
+            showToast('⚠️ فشل الحفظ: ' + error.message);
             return;
         }
 
@@ -2206,7 +2265,7 @@ async function saveAccountSettings() {
         const userData = {
             ...existingData,
             display_name: displayName,
-            username: username,
+            username: username || currentUsername,
             birth_date: birthDate,
             email: currentUser.email,
             credits: existingData.credits || 0,
@@ -2214,16 +2273,21 @@ async function saveAccountSettings() {
         };
         localStorage.setItem('stackStoreUserData_' + currentUser.id, JSON.stringify(userData));
 
-        // 3. تحديث الـ UI
+        // 3. تحديث الـ dropdown
         const dropdownUsername = document.getElementById('dropdownUsername');
+        const dropdownEmail = document.getElementById('dropdownEmail');
         if (dropdownUsername) {
             dropdownUsername.textContent = username || displayName || 'مستخدم';
         }
+        if (dropdownEmail) {
+            dropdownEmail.textContent = currentUser.email || '';
+        }
 
+        // ✅ رسالة نجاح واضحة
         showToast('✅ تم حفظ التغييرات بنجاح!');
 
     } catch (error) {
-        console.error('Save error:', error);
+        console.error('❌ Save error:', error);
         showToast('❌ حدث خطأ: ' + error.message);
     }
 }
